@@ -19,24 +19,24 @@ to understand how the operating system balances efficiency and isolation.
 
 ## Experiments Overview
 
-```
-● Creation Time Comparison:
+
+- [x] Creation Time Comparison:
 Measures how long it takes to create multiple processes using fork() versus threads
 using pthreads. This highlights the overhead differences between process and thread
 creation.
-● Recursive Fork Explosion:
+- [ ] Recursive Fork Explosion:
 A process recursively calls fork() to observe exponential growth in the number of
 processes. This demonstrates how quickly system resources can be exhausted.
-● Thread Recursive Scaling:
+- [ ] Thread Recursive Scaling:
 Similar recursive creation using threads to compare scalability and resource usage against
 fork().
-● Maximum Limit Stress Test:
+- [x] Maximum Limit Stress Test:
 Continuously creates processes or threads until the system refuses further creation,
 revealing OS-enforced limits on concurrency.
-● Memory and Stability Observation(removed max forks with ulimit -u 20000):
+- [ ] Memory and Stability Observation(removed max forks with ulimit -u 20000):
 Monitors system memory usage and system responsiveness during heavy process and
 thread creation.
-```
+
 ## Key Findings Focus
 
 - Threads are expected to be faster and more scalable than processes. - fork() is heavier due to
