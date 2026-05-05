@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+LC_ALL=C
 
 DIR=$(cd "$(dirname "$0")" && pwd)
 cd "$DIR"
@@ -32,7 +33,7 @@ fi
 
 echo "Running: ./thread_recursive -b $BRANCH -d $DEPTH -s $HOLD"
 
-START_NS=$(date +%s%N)
+START_UPTIME=$(awk '{print $1}' /proc/uptime)
 ./thread_recursive -b "$BRANCH" -d "$DEPTH" -s "$HOLD" >"$STDOUT_LOG" 2>"$STDERR_LOG" &
 PID=$!
 
@@ -46,15 +47,31 @@ MAX_CPU=0
 SUM_CPU=0
 SAMPLE_COUNT=0
 
+CLK_TCK=$(getconf CLK_TCK)
+PREV_UPTIME=$(awk '{print $1}' /proc/uptime)
+PREV_TICKS=0
+if [ -r "/proc/$PID/stat" ]; then
+	PREV_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat")
+fi
+
 while kill -0 "$PID" 2>/dev/null; do
-	NOW_NS=$(date +%s%N)
-	ELAPSED_S=$(awk -v s="$START_NS" -v n="$NOW_NS" 'BEGIN{printf "%.3f", (n-s)/1000000000}')
-	PS_LINE=$(ps -p "$PID" -o %cpu=,rss=,vsz=,nlwp= 2>/dev/null | tr -s ' ' | sed 's/^ //') || true
-	if [ -n "${PS_LINE:-}" ]; then
-		CPU=$(echo "$PS_LINE" | awk '{print $1}')
-		RSS=$(echo "$PS_LINE" | awk '{print $2}')
-		VSZ=$(echo "$PS_LINE" | awk '{print $3}')
-		NLWP=$(echo "$PS_LINE" | awk '{print $4}')
+	NOW_UPTIME=$(awk '{print $1}' /proc/uptime)
+	ELAPSED_S=$(awk -v s="$START_UPTIME" -v n="$NOW_UPTIME" 'BEGIN{printf "%.3f", (n-s)}')
+
+	if [ -r "/proc/$PID/status" ] && [ -r "/proc/$PID/stat" ]; then
+		RSS=$(awk '/^VmRSS:/ {print $2}' "/proc/$PID/status")
+		VSZ=$(awk '/^VmSize:/ {print $2}' "/proc/$PID/status")
+		NLWP=$(awk '/^Threads:/ {print $2}' "/proc/$PID/status")
+		CUR_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat")
+
+		RSS=${RSS:-0}
+		VSZ=${VSZ:-0}
+		NLWP=${NLWP:-0}
+
+		DT=$(awk -v a="$PREV_UPTIME" -v b="$NOW_UPTIME" 'BEGIN{print b-a}')
+		DC=$(awk -v a="$PREV_TICKS" -v b="$CUR_TICKS" 'BEGIN{print b-a}')
+		CPU=$(awk -v dt="$DT" -v dc="$DC" -v hz="$CLK_TCK" 'BEGIN{ if (dt<=0) printf "0.00"; else printf "%.2f", (100.0*dc)/(dt*hz) }')
+
 		echo "$ELAPSED_S,$CPU,$RSS,$VSZ,$NLWP" >> "$SAMPLE_LOG"
 
 		MAX_RSS=$(awk -v a="$MAX_RSS" -v b="$RSS" 'BEGIN{print (b>a)?b:a}')
@@ -63,6 +80,9 @@ while kill -0 "$PID" 2>/dev/null; do
 		MAX_CPU=$(awk -v a="$MAX_CPU" -v b="$CPU" 'BEGIN{print (b>a)?b:a}')
 		SUM_CPU=$(awk -v s="$SUM_CPU" -v c="$CPU" 'BEGIN{print s+c}')
 		SAMPLE_COUNT=$((SAMPLE_COUNT + 1))
+
+		PREV_UPTIME=$NOW_UPTIME
+		PREV_TICKS=$CUR_TICKS
 	fi
 	sleep 1
 done
@@ -71,8 +91,8 @@ set +e
 wait "$PID"
 EXIT_CODE=$?
 set -e
-END_NS=$(date +%s%N)
-WALL_S=$(awk -v s="$START_NS" -v e="$END_NS" 'BEGIN{printf "%.6f", (e-s)/1000000000}')
+END_UPTIME=$(awk '{print $1}' /proc/uptime)
+WALL_S=$(awk -v s="$START_UPTIME" -v e="$END_UPTIME" 'BEGIN{printf "%.6f", (e-s)}')
 
 AVG_CPU=0
 if [ "$SAMPLE_COUNT" -gt 0 ]; then
