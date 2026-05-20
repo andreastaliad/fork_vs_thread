@@ -50,3 +50,18 @@ Citations will include:
 1.  Man pages
 2.  Linux kernel docs from IEEE
 3.  Thread docs
+
+
+## Key Commands for lifting linux kernel restrictions on alpine linux for threads & processes:
+
+```
+# Lift shell nproc limit
+ulimit -u unlimited
+
+# Raise kernel PID/thread caps (temporary until reboot)
+sudo sysctl -w kernel.pid_max=131072
+sudo sysctl -w kernel.threads-max=131072
+
+# Lift cgroup v2 pids limit (temporary until reboot)
+sudo sh -c 'echo max > /sys/fs/cgroup/pids.max'
+```
