@@ -14,11 +14,13 @@ log() {
 }
 
 count_processes() {
-  ls /proc | awk '/^[0-9]+$/' | wc -l
+  find /proc -maxdepth 1 -type d -regex '/proc/[0-9]+' 2>/dev/null | wc -l
 }
 
 count_threads_total() {
-  awk '/^Threads:/ {sum+=$2} END {print sum+0}' /proc/[0-9]*/status 2>/dev/null || echo 0
+  find /proc -maxdepth 2 -type f -regex '/proc/[0-9]+/status' -print0 2>/dev/null \
+    | xargs -0 awk '/^Threads:/ {sum+=$2} END {print sum+0}' 2>/dev/null \
+    || echo 0
 }
 
 get_mem_kb() {

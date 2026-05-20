@@ -65,3 +65,17 @@ sudo sysctl -w kernel.threads-max=131072
 # Lift cgroup v2 pids limit (temporary until reboot)
 sudo sh -c 'echo max > /sys/fs/cgroup/pids.max'
 ```
+
+## Crash/Stress Behavior (Runner Env Vars)
+
+The runner script uses the following environment variables to control risky experiments:
+
+- `ALLOW_DANGEROUS=1` to enable `fork_bomb` and `max_limit_stress` (default: 0).
+- `FORK_BOMB_SECONDS=<seconds>` to timebox `fork_bomb` runtime.
+- `MAX_LIMIT_SECONDS=<seconds>` to timebox `max_limit_stress` runtime.
+
+Example:
+
+```sh
+ALLOW_DANGEROUS=1 FORK_BOMB_SECONDS=5 MAX_LIMIT_SECONDS=5 bash run_all_experiments.sh
+```
