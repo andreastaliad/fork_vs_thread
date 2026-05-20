@@ -51,7 +51,7 @@ CLK_TCK=$(getconf CLK_TCK)
 PREV_UPTIME=$(awk '{print $1}' /proc/uptime)
 PREV_TICKS=0
 if [ -r "/proc/$PID/stat" ]; then
-	PREV_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat")
+	PREV_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat" 2>/dev/null || echo 0)
 fi
 
 while kill -0 "$PID" 2>/dev/null; do
@@ -59,10 +59,10 @@ while kill -0 "$PID" 2>/dev/null; do
 	ELAPSED_S=$(awk -v s="$START_UPTIME" -v n="$NOW_UPTIME" 'BEGIN{printf "%.3f", (n-s)}')
 
 	if [ -r "/proc/$PID/status" ] && [ -r "/proc/$PID/stat" ]; then
-		RSS=$(awk '/^VmRSS:/ {print $2}' "/proc/$PID/status")
-		VSZ=$(awk '/^VmSize:/ {print $2}' "/proc/$PID/status")
-		NLWP=$(awk '/^Threads:/ {print $2}' "/proc/$PID/status")
-		CUR_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat")
+		RSS=$(awk '/^VmRSS:/ {print $2}' "/proc/$PID/status" 2>/dev/null || echo 0)
+		VSZ=$(awk '/^VmSize:/ {print $2}' "/proc/$PID/status" 2>/dev/null || echo 0)
+		NLWP=$(awk '/^Threads:/ {print $2}' "/proc/$PID/status" 2>/dev/null || echo 0)
+		CUR_TICKS=$(awk '{print $14 + $15}' "/proc/$PID/stat" 2>/dev/null || echo 0)
 
 		RSS=${RSS:-0}
 		VSZ=${VSZ:-0}

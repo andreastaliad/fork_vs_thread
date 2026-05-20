@@ -18,7 +18,7 @@ count_processes() {
 }
 
 count_threads_total() {
-  awk '/^Threads:/ {sum+=$2} END {print sum+0}' /proc/[0-9]*/status 2>/dev/null
+  awk '/^Threads:/ {sum+=$2} END {print sum+0}' /proc/[0-9]*/status 2>/dev/null || echo 0
 }
 
 get_mem_kb() {
@@ -60,12 +60,12 @@ sample_process_csv() {
     read -r load1 load5 load15 _ < /proc/loadavg
 
     local mem_total mem_avail mem_used
-    read -r mem_total mem_avail < <(get_mem_kb)
+    read -r mem_total mem_avail < <(get_mem_kb || echo "0 0")
     mem_used=$((mem_total - mem_avail))
 
     local proc_count thread_total
-    proc_count=$(count_processes)
-    thread_total=$(count_threads_total)
+    proc_count=$(count_processes || echo 0)
+    thread_total=$(count_threads_total || echo 0)
 
     local rss=0 vsz=0 stk=0 heap=0 nlwp=0
     if [ -r "/proc/$pid/status" ]; then
@@ -161,12 +161,17 @@ compile_thread_stress
 ALLOW_DANGEROUS=${ALLOW_DANGEROUS:-0}
 FORK_BOMB_SECONDS=${FORK_BOMB_SECONDS:-5}
 MAX_LIMIT_SECONDS=${MAX_LIMIT_SECONDS:-5}
+CREATION_TIME_ITERS=${CREATION_TIME_ITERS:-"100 1000 10000"}
+CREATION_TIME_SECONDS=${CREATION_TIME_SECONDS:-60}
+
+CREATION_TIME_STDOUT="$OUT_DIR/creation_time_stdout.log"
+CREATION_TIME_STDERR="$OUT_DIR/creation_time_stderr.log"
 
 run_with_sampling \
   "creation_time" \
-  "cd '$ROOT_DIR/creation_time_experiment' && ./bash_test_iter.sh" \
+  "cd '$ROOT_DIR/creation_time_experiment' && { for n in $CREATION_TIME_ITERS; do echo \"=== iterations=\$n ===\"; ./creation_time -n \"\$n\"; done; } >'$CREATION_TIME_STDOUT' 2>'$CREATION_TIME_STDERR'" \
   "$OUT_DIR/creation_time.csv" \
-  0
+  "$CREATION_TIME_SECONDS"
 
 if [ "$ALLOW_DANGEROUS" -eq 1 ]; then
   run_with_sampling \
